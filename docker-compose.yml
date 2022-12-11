@@ -1,0 +1,25 @@
+version: '3'
+services:
+
+  # start zookeeper first on port 2181
+  zookeeper:
+    image: zookeeper
+    container_name: zookeeper
+    ports:
+      - '2181:2181'
+
+  # run kafka after zookeeper on port 9092
+  kafka:
+    image: confluentinc/cp-kafka
+    container_name: kafka
+    ports:
+      - '9092:9092'
+
+    # set env vars to point to zookeeper
+    environment:
+      KAFKA_ADVERTISED_HOST_NAME: localhost
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+
+    depends_on:
+      - zookeeper

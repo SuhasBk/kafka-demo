@@ -1,0 +1,52 @@
+overview and concept "click": https://www.youtube.com/watch?v=aj9CDZm0Glc
+
+more on consumer groups:
+    single consumer group acts like a QUEUE model.
+    put each consumer in a unique group to make it act like a PUB-SUB model.
+
+dependencies:
+    1) spring-starter-web
+    2) spring-kafka
+
+    Optional:
+    spring-kafka-test
+    spring-boot-devtools
+    spring-starter-test
+
+workflow:
+    1) run zookeeper and kafka docker servers (docker-compose up). 
+        - Think of zookeeper like discovery-service (naming registry, availability, load balancing etc) and the actual kafka server as a microservice.
+        - Kafka (9092), so far, in prod, cannot be started without zookeeper (2181) already running.
+
+    2) data config: 
+        - Message.java (simple String model, could be anything though)
+    
+    3) topic-config (KafkaTopicConfig.java):
+        - Use TopicBuilder class to create a bean which returns a new topic and which will be created on startup in kafka server.
+    
+    4) producer-config (KafkaProducerConfig.java):
+        - set spring.kafka.bootstrap-servers property to localhost:9092 (kafka service running in docker) and get the value in the config file
+
+        - KafkaTemplate bean with custom ProducerFactory:
+            - create a new hashmap for-
+                - bootstrap server (bootstrap.servers) = "localhost:9092"
+                - key serializer (key.serializer) = StringSerializer.class
+                - value serializer (value.serializer) = StringSerializer.class
+            - Create a new ProducerFactory with the above configs hashmap using "new DefaultKafkaProducerFactory<>(configs)"
+            - return the custom KafkaTemplate<String, String> instance with the above ProducerFactory instance using "new KafkaTemplate<>(producerFactory);"
+        
+        Autowire the KafkaTemplate which will return this bean. Then, use template.send(<topic_name>, <message>)
+    
+    5) consumer-config (KafkaConsumerConfig.java):
+        - set spring.kafka.bootstrap-servers property to localhost:9092 (kafka service running in docker) and get the value in the config file
+
+        - KafkaListenerContainerFactory bean with custom ConsumerFactory:
+            - create an instance of ConcurrentKafkaListenerContainerFactory<String, String> (factory)
+            - Use same hashmap config used in producer except, instead of serializer, it should be deserializer values
+            - set the factory's setConsumerFactory(new DefaultKafkaConsumerFactory<>(configs_hashmap));
+            - return this factory instance.
+    
+    6) Kafka-Listner config (KafkaListeners.java):
+        - Add methods which will handle the data coming from producers, using the @KafkaListener(topics="<topic_name>", groupId="<group>")
+
+        - Note: Here, groupId refers to different type of consumers. Ultimately, whatever is prodcued will be consumed by all types of consumers, but we can control what and how the prodcued data will be shown to the consumers!
